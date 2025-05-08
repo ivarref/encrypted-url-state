@@ -17,7 +17,7 @@ As the state is kept by the external service, a restart to your service will
 not delete the state.
 
 When your service is visited with the callback URL, it can decrypt
-the state and then use it resume doing whatever it needs to do.
+the state and then use it to resume doing whatever it needs to do.
 
 For example in a signing process:
 
@@ -37,7 +37,7 @@ sequenceDiagram
 ## Installation
 
 ```
-com.github.ivarref/encrypted-url-state {:git/sha "..."}
+com.github.ivarref/encrypted-url-state {:git/tag "v0.0.1" :git/sha "9aaf5de92e612393062769992353b2321ec38be7"}
 ```
 
 ## Usage
@@ -50,24 +50,35 @@ com.github.ivarref/encrypted-url-state {:git/sha "..."}
 => "TlBZDrDCzqg7goKQvpijViGM2_jEZEJqFk1Gcqibt5W64UzQLfYvbLnATi8TqUYuwg=="
 
 ; Explicit expiry given as epoch time in seconds: 24 hours from now
-(eus/encrypt "my-key" (eus/curr-epoch-time-plus-seconds (* 24 3600)) "my-state")
+(eus/encrypt "my-key"
+             (eus/curr-epoch-time-plus-seconds (* 24 3600))
+             "my-state")
 => "TlBZDtz_UPYPEal6qmk-ACMUogigcP01wMZc_UWdg60fN6YHdmkrhfM9m7FH3wVlEw=="
 
 
 ; Decrypt:
-(eus/decrypt "my-key" *1) ; Default epoch time: (long (/ (System/currentTimeMillis) 1000))
+; Default epoch time: (long (/ (System/currentTimeMillis) 1000))
+(eus/decrypt "my-key" *1) 
 => {:expired? false, :state "my-state", :error? false, :error-message nil}
 
 ; Explicit epoch time:
-(eus/decrypt "my-key" 1746604368 "TlBZDtz_UPYPEal6qmk-ACMUogigcP01wMZc_UWdg60fN6YHdmkrhfM9m7FH3wVlEw==") 
+(eus/decrypt "my-key"
+             1746604368
+             "TlBZDtz_UPYPEal6qmk-ACMUogigcP01wMZc_UWdg60fN6YHdmkrhfM9m7FH3wVlEw==") 
 => {:expired? false, :state "my-state", :error? false, :error-message nil}
 
 ; :error? will be true if a tamper attempt was detected:
+; :error-message will be set to the message of the exception
 (eus/decrypt "my-key" (eus/encrypt "attacker-key" "my-state"))
-=> {:expired? false, :state nil, :error? true, :error-message "Thaw failed. Possible decryption/decompression error, unfrozen/damaged data, etc."}
+=> {:expired? false,
+    :state nil, 
+    :error? true,
+    :error-message "Thaw failed. Possible decryption/decompression error, unfrozen/damaged data, etc."}
 
 ; :expired? will be true if the message was expired:
-(eus/decrypt "my-key" (eus/encrypt "my-key" (eus/curr-epoch-time-plus-seconds -10) "my-state"))
+(eus/decrypt "my-key"
+             (eus/curr-epoch-time-plus-seconds 3601) ; one second too old!
+             (eus/encrypt "my-key" "my-state"))
 => {:expired? true, :state nil, :error? false, :error-message "Expired"}
 
 
@@ -87,7 +98,7 @@ com.github.ivarref/encrypted-url-state {:git/sha "..."}
 ### Details
 
 `encrypt` and `decrypt` use high-strength AES128, courtesy of [nippy](https://github.com/taoensso/nippy/)*.
-This yields a smaller amount of bytes than using a regular JWT would. An external user cannot view
+This yields a smaller amount of bytes than using a regular JWT would. An external user also cannot view
 the contents of the state as the message is encrypted.
 There is not any public key here. This means that the recipient of the encrypted state should be the same service
 or another service with an identical private key/password.
@@ -96,7 +107,7 @@ or another service with an identical private key/password.
 
 * #clojure-norway on [Clojurians](https://clojurians.slack.com).
 * \*[Peter Taoussanis](https://www.taoensso.com/) for nippy.
-* \*[Magnar Sveen](https://magnars.com/) and [confair](https://github.com/magnars/confair).
+* \*[Magnar Sveen](https://magnars.com/) for [confair](https://github.com/magnars/confair).
 
 ### IFAQ
 
